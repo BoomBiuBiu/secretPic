@@ -31,7 +31,7 @@
     self.myTableView.dataSource = self;
     self.view.backgroundColor=[UIColor colorWithRed:1/255.0 green:150/255.0 blue:255/255 alpha:1];
      self.titleArray = [[NSArray alloc] init];
-    self.titleArray = @[@"照片浏览器",@"网络图片浏览器",@"单张拍照",@"手动连拍"];
+    self.titleArray = @[@"添加照片",@"查看照片",@"单张拍照",@"手动连拍"];
     
   }
 
@@ -63,7 +63,7 @@
         [self pushPhotoBroswerWithStyle:LGShowImageTypeImageBroswer];
 
     }else{
-        [self showMessage:@"暂无照片。。。"];
+        [self showMessage:@"暂无照片😭😭😭"];
     }
 }
 
@@ -136,19 +136,24 @@
 #pragma mark - UITableViewDataSource
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    
+    return 2;
+    
     return self.titleArray.count;
+    
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
     cell.textLabel.text = [self.titleArray objectAtIndex:indexPath.row];
+    cell.textLabel.font=[UIFont systemFontOfSize:30];
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     return cell;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
     
-    return 66;
+    return 250;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section{
@@ -162,20 +167,22 @@
     switch (indexPath.row) {
          case 0:
             
+//            [self prepareForPhotoBroswerWithImage];
+//
+//            [self pushPhotoBroswerWithStyle:LGShowImageTypeImageBroswer];
+//            break;
+            
+            [self presentPhotoPickerViewControllerWithStyle:LGShowImageTypeImagePicker];
+            break;
+
+        case 1:
         {
             TouchidViewController *touch=[[TouchidViewController alloc]init];
             touch.delegate=self;
             [self presentViewController:touch animated:YES completion:nil ];
             break;
         }
-//            [self prepareForPhotoBroswerWithImage];
-//
-//            [self pushPhotoBroswerWithStyle:LGShowImageTypeImageBroswer];
-//            break;
-        case 1:
-            [self pushPhotoBroswerWithStyle:LGShowImageTypeImageURL];
-            break;
-        case 2:
+         case 2:
             [self presentCameraSingle];
             break;
         case 3:
@@ -237,7 +244,7 @@
     NSData *imageData = [NSKeyedArchiver archivedDataWithRootObject:originImage];
     BOOL isSucceed=[SandBoxHandle savedData:imageData FileUrl:@"mypicArr"];
  
-    NSString *message= isSucceed ? @"保存成功":@"保存失败";
+    NSString *message= isSucceed ? @"添加成功":@"添加失败";
     [self showMessage:message];
     
     //读取沙盒目录 检查是否保存成功
@@ -311,10 +318,10 @@
     [self presentPhotoPickerViewControllerWithStyle:LGShowImageTypeImagePicker];
 
 }
+#pragma mark -touchIdDelegate-
 -(void)showPics{
     
                 [self prepareForPhotoBroswerWithImage];
     
-
-}
+ }
 @end

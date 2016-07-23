@@ -12,7 +12,8 @@
 #import "LGPhotoPickerCustomToolBarView.h"
 #import "LGPhotoAssets.h"
 #import "LGPhotoPickerCommon.h"
-
+#import "SandBoxHandle.h"
+#import "TouchidViewController.h"
 static NSString *_cellIdentifier = @"collectionViewCell";
 
 typedef NS_ENUM(NSInteger, DraggingDirect) {
@@ -22,7 +23,9 @@ typedef NS_ENUM(NSInteger, DraggingDirect) {
 };
 
 @interface LGPhotoPickerBrowserViewController () <UIScrollViewDelegate,LGPhotoPickerPhotoScrollViewDelegate,UICollectionViewDataSource,UICollectionViewDelegate,LGPhotoPickerCustomToolBarViewDelegate>
-
+{
+   BOOL iShowTouchId;
+}
 // 控件
 @property (nonatomic, weak)  UILabel          *pageLabel;
 @property (nonatomic, weak)  UIButton         *backBtn;
@@ -62,7 +65,7 @@ typedef NS_ENUM(NSInteger, DraggingDirect) {
 
 #pragma mark - getter
 #pragma mark photos
-- (NSArray *)photos{
+- (NSMutableArray *)photos{
     if (!_photos) {
         _photos = [self getPhotos];
     }
@@ -123,7 +126,7 @@ typedef NS_ENUM(NSInteger, DraggingDirect) {
 }
 
 #pragma mark getPhotos
-- (NSArray *)getPhotos{
+- (NSMutableArray *)getPhotos{
     NSMutableArray *photos = [NSMutableArray arrayWithArray:_photos];
     if ([self isDataSourceElsePhotos]) {
         NSInteger section = self.currentIndexPath.section;
@@ -144,6 +147,22 @@ typedef NS_ENUM(NSInteger, DraggingDirect) {
     [self setupCollectionView];
     [self setupTopView];
     [self setupXGToolbar];
+    
+    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(showsTouchIDVC) name:@"WillEnterForegroun" object:nil];
+
+ 
+}
+-(void)showsTouchIDVC{
+    iShowTouchId=YES;
+    if (iShowTouchId) {
+        
+        TouchidViewController *touch=[[TouchidViewController alloc]init];
+        touch.fromPage=@"photoStr";
+        iShowTouchId=NO;
+        [self presentViewController:touch animated:YES completion:nil ];
+        
+    }
+
 }
 
 - (void)viewWillAppear:(BOOL)animated{
@@ -154,6 +173,7 @@ typedef NS_ENUM(NSInteger, DraggingDirect) {
     [self reloadData];
     [self updateXGToolbar];
     [self updateSelectBtn];
+
 }
 
 - (void)viewDidAppear:(BOOL)animated{
@@ -278,9 +298,11 @@ typedef NS_ENUM(NSInteger, DraggingDirect) {
 #pragma mark - UICollectionViewDataSource
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section{
-    if ([self isDataSourceElsePhotos]) {
-        return [self.dataSource photoBrowser:self numberOfItemsInSection:self.currentIndexPath.section];
-    }
+//    if ([self isDataSourceElsePhotos]) {
+//        NSInteger num=[self.dataSource photoBrowser:self numberOfItemsInSection:self.currentIndexPath.section];
+//        NSLog(@"numnumnum=%ld",num);
+//        return num;
+//    }
     return self.photos.count;
 }
 
@@ -293,28 +315,31 @@ typedef NS_ENUM(NSInteger, DraggingDirect) {
     }
     if (self.photos.count) {
         LGPhotoPickerBrowserPhoto *photo = nil;
-        photo = self.photos[indexPath.item];
-        if([[cell.contentView.subviews lastObject] isKindOfClass:[UIView class]]){
-            [[cell.contentView.subviews lastObject] removeFromSuperview];
+//        if (indexPath.item<self.photos.count) {
+//
+            photo = self.photos[indexPath.item];
+            if([[cell.contentView.subviews lastObject] isKindOfClass:[UIView class]]){
+                [[cell.contentView.subviews lastObject] removeFromSuperview];
+            }
+            
+            CGRect tempF = [UIScreen mainScreen].bounds;
+            UIView *scrollBoxView = [[UIView alloc] init];
+            scrollBoxView.frame = tempF;
+            scrollBoxView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
+            [cell.contentView addSubview:scrollBoxView];
+            
+            LGPhotoPickerBrowserPhotoScrollView *scrollView =  [[LGPhotoPickerBrowserPhotoScrollView alloc] init];
+            [scrollBoxView addSubview:scrollView];
+            scrollView.showType = self.showType;
+            // 为了监听单击photoView事件
+            scrollView.frame = tempF;
+            scrollView.tag = 101;
+            scrollView.photoScrollViewDelegate = self;
+            scrollView.photo = photo;
+            scrollView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
+            _cellScrollView = scrollView;
         }
-        
-        CGRect tempF = [UIScreen mainScreen].bounds;
-        UIView *scrollBoxView = [[UIView alloc] init];
-        scrollBoxView.frame = tempF;
-        scrollBoxView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
-        [cell.contentView addSubview:scrollBoxView];
-        
-        LGPhotoPickerBrowserPhotoScrollView *scrollView =  [[LGPhotoPickerBrowserPhotoScrollView alloc] init];
-        [scrollBoxView addSubview:scrollView];
-        scrollView.showType = self.showType;
-        // 为了监听单击photoView事件
-        scrollView.frame = tempF;
-        scrollView.tag = 101;
-        scrollView.photoScrollViewDelegate = self;
-        scrollView.photo = photo;
-        scrollView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
-        _cellScrollView = scrollView;
-    }
+//    }
     return cell;
 }
 
@@ -436,7 +461,8 @@ typedef NS_ENUM(NSInteger, DraggingDirect) {
 }
 
 - (void) pickerPhotoScrollViewDidLongPressed:(LGPhotoPickerBrowserPhotoScrollView *)photoScrollView{
-    [self longPressAction];
+    
+    [self longPressAction:photoScrollView];
 }
 
 #pragma mark - ZLPhotoPickerCustomToolBarViewDelegate
@@ -519,8 +545,75 @@ typedef NS_ENUM(NSInteger, DraggingDirect) {
 }
 
 #pragma mark - 长按动作
-- (void)longPressAction {
+- (void)longPressAction :(LGPhotoPickerBrowserPhotoScrollView*)photoScrollView{
     NSLog(@"long pressed");
+    
+    LGPhotoPickerBrowserPhoto *photo =photoScrollView.photo;
+    
+    NSString *title=@"请选择操作";
+    NSString *subtitle=@"保存到相册";
+    NSString *subtitle1=@"删除";
+    
+    
+    UIAlertController * alertController = [UIAlertController alertControllerWithTitle:title                                                                             message: nil preferredStyle:UIAlertControllerStyleActionSheet];
+    //添加Button
+    [alertController addAction: [UIAlertAction actionWithTitle: subtitle1 style: UIAlertActionStyleDestructive handler:^(UIAlertAction *action){//删除
+        
+        if ([self.photos containsObject:photo]) {
+            [self.photos removeObject:photo];
+        }
+        
+         [self reloadData];
+        [_collectionView reloadData];
+        
+        NSMutableArray *imgArr=[NSMutableArray array];
+        for (int i = 0; i<[self.photos count]; i++)
+        {
+            LGPhotoPickerBrowserPhoto *photo=self.photos[i];
+            
+            [imgArr addObject:photo.photoImage];
+        }
+        //     photo.photoImage写入沙盒目录-覆盖
+        
+        NSData *imageData = [NSKeyedArchiver archivedDataWithRootObject:imgArr];
+        BOOL isSucceed=[SandBoxHandle savedData:imageData FileUrl:@"mypicArr"];
+        
+        NSString *message= isSucceed ? @"删除成功":@"删除失败";
+        [self showMessage:message];
+        
+        if (self.photos.count==0) {
+            //删除最后一个 返回上级
+            [self dismissViewControllerAnimated:YES completion:nil];
+            [self showMessage:@"删完啦，拜拜！😂😂😂"];
+
+        }
+
+        
+        
+    }]];
+
+    [alertController addAction: [UIAlertAction actionWithTitle: subtitle style: UIAlertActionStyleDefault handler:^(UIAlertAction *action) {//保存到相册
+        
+        
+         if([UIImagePickerController isSourceTypeAvailable: UIImagePickerControllerSourceTypeSavedPhotosAlbum]) {
+            UIImageWriteToSavedPhotosAlbum(photo.photoImage, nil, nil, nil);
+            if (_cellScrollView.photoImageView.image) {
+                [self showMessageWithText:@"保存成功"];
+            }
+        }else{
+            if (_cellScrollView.photoImageView.image) {
+                [self showMessageWithText:@"没有用户权限,保存失败"];
+            }
+        }
+
+        
+     }]];
+    [alertController addAction: [UIAlertAction actionWithTitle: @"取消" style: UIAlertActionStyleCancel handler:nil]];
+     [self presentViewController: alertController animated: YES completion: nil];
+
+    
+    
+    
 }
 
 
@@ -589,4 +682,32 @@ typedef NS_ENUM(NSInteger, DraggingDirect) {
 - (void)showHeadPortrait:(UIImageView *)toImageView originUrl:(NSString *)originUrl{
 
 }
+-(void)showMessage:(NSString *)message
+{
+    UIWindow *window = [UIApplication sharedApplication].keyWindow;
+    UIView *showview =  [[UIView alloc]init];
+    showview.backgroundColor = [UIColor blackColor];
+    showview.frame = CGRectMake(1, 1, 1, 1);
+    showview.alpha = 1.0f;
+    showview.layer.cornerRadius = 5.0f;
+    showview.layer.masksToBounds = YES;
+    [window addSubview:showview];
+    
+    UILabel *label = [[UILabel alloc]init];
+    CGSize LabelSize = [message sizeWithFont:[UIFont systemFontOfSize:17] constrainedToSize:CGSizeMake(290, 9000)];
+    label.frame = CGRectMake(10, 5, LabelSize.width, LabelSize.height);
+    label.text = message;
+    label.textColor = [UIColor whiteColor];
+    label.textAlignment = 1;
+    label.backgroundColor = [UIColor clearColor];
+    label.font = [UIFont boldSystemFontOfSize:15];
+    [showview addSubview:label];
+    showview.frame = CGRectMake((SCREEN_WIDTH - LabelSize.width - 20)/2, 200, LabelSize.width+20, LabelSize.height+20);
+    [UIView animateWithDuration:2.59 animations:^{
+        showview.alpha = 0;
+    } completion:^(BOOL finished) {
+        [showview removeFromSuperview];
+    }];
+}
+
 @end

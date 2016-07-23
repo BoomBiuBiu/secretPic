@@ -16,4 +16,5 @@
 @interface TouchidViewController : UIViewController
 
 @property(nonatomic,weak)  id<touchIdDelegate>delegate;
+@property(nonatomic,copy)  NSString *fromPage ;
 @end
